@@ -1,0 +1,4 @@
+otcharts
+requests
+pandas
+numpy
