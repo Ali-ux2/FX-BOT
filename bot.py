@@ -34,18 +34,18 @@ def check_market():
     
     for pair in PAIRS:
         try:
-            #21 Fetch M5 data from Quotex book
+            # Fetch M5 data from Quotex book
             bars = client.candles("quotex", pair, tf=5, limit=100)
             
             if not bars:
                 print(f"No data received for {pair} on Quotex.")
-']                continue
+                continue
 
             df = pd.DataFrame(bars)
-            = df['close'] = df['close']. dfastype(float)
+            df['close'] = df['close'].astype(float)
             
-           [' df['ema9'] =close df['close'].ewm(span=9, adjust=False).mean()
-            df['ema'].ewm(span=21, adjust=False).mean()
+            df['ema9'] = df['close'].ewm(span=9, adjust=False).mean()
+            df['ema21'] = df['close'].ewm(span=21, adjust=False).mean()
             df['rsi'] = calculate_rsi(df['close'])
             
             last_row = df.iloc[-1]
