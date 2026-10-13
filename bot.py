@@ -33,8 +33,8 @@ def check_market():
     
     for pair in PAIRS:
         try:
-            # Fetch M5 data from Quotex book using the _otc symbol
-            bars = client.candles("quotex", pair, tf=5, limit=100)
+            # Fetch M1 data
+            bars = client.candles("quotex", pair, tf=1, limit=100)
             
             if not bars:
                 print(f"No data received for {pair}.")
@@ -56,25 +56,42 @@ def check_market():
             
             signal = None
             
+            # OPEN BUY SIGNAL
             if ema_cross_up and last_row['rsi'] > 50:
                 signal = (
-                    f"🟢 *BUY SIGNAL: {pair} M5*\n\n"
+                    f"🟢 *OPEN BUY: {pair} M1*\n\n"
                     f"📈 EMA 9 crossed above EMA 21\n"
                     f"📊 RSI: {last_row['rsi']:.2f}\n"
                     f"💰 Price: {current_price:.5f}\n\n"
-                    f"🎯 Take Profit: 15 pips\n"
-                    f"🛑 Stop Loss: 10 pips\n\n"
-                    f"⚠️ *Verify on Exness MT5 before entering!*"
+                    f"🎯 Take Profit: 5 pips\n"
+                    f"🛑 Stop Loss: 5 pips"
                 )
+            # OPEN SELL SIGNAL
             elif ema_cross_down and last_row['rsi'] < 50:
                 signal = (
-                    f"🔴 *SELL SIGNAL: {pair} M5*\n\n"
+                    f"🔴 *OPEN SELL: {pair} M1*\n\n"
                     f"📉 EMA 9 crossed below EMA 21\n"
                     f"📊 RSI: {last_row['rsi']:.2f}\n"
                     f"💰 Price: {current_price:.5f}\n\n"
-                    f"🎯 Take Profit: 15 pips\n"
-                    f"🛑 Stop Loss: 10 pips\n\n"
-                    f"⚠️ *Verify on Exness MT5 before entering!*"
+                    f"🎯 Take Profit: 5 pips\n"
+                    f"🛑 Stop Loss: 5 pips"
+                )
+            # CLOSE SIGNAL (Opposite Cross)
+            elif ema_cross_up and last_row['rsi'] < 50:
+                signal = (
+                    f"⚠️ *CLOSE SELL TRADE: {pair} M1*\n\n"
+                    f"🔄 EMA 9 crossed above EMA 21\n"
+                    f"📊 RSI: {last_row['rsi']:.2f}\n"
+                    f"💰 Price: {current_price:.5f}\n\n"
+                    f"➡️ *Close any open SELL positions on this pair.*"
+                )
+            elif ema_cross_down and last_row['rsi'] > 50:
+                signal = (
+                    f"⚠️ *CLOSE BUY TRADE: {pair} M1*\n\n"
+                    f"🔄 EMA 9 crossed below EMA 21\n"
+                    f"📊 RSI: {last_row['rsi']:.2f}\n"
+                    f"💰 Price: {current_price:.5f}\n\n"
+                    f"➡️ *Close any open BUY positions on this pair.*"
                 )
             
             if signal:
@@ -89,11 +106,11 @@ def check_market():
             print(f"Error checking {pair}: {e}")
 
 if __name__ == "__main__":
-    print("Starting Quotex Signal Bot...")
-    send_telegram("🤖 *Major Pairs Bot* is online. Monitoring EURUSD, GBPUSD, USDJPY on M5...")
+    print("Starting M1 Scalping Bot...")
+    send_telegram("🤖 *M1 Scalping Bot* is online. Monitoring EURUSD, GBPUSD, USDJPY on M1...")
     while True:
         try:
             check_market()
         except Exception as e:
             print(f"Main Loop Error: {e}")
-        time.sleep(300) # Wait 5 minutes for M5
+        time.sleep(60) # Wait 1 minute for M1
