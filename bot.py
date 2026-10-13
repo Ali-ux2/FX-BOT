@@ -4,7 +4,7 @@ import requests
 import pandas as pd
 import otcharts
 
-# Environment variables (set these in Railway)
+# Environment variables (these are already set in your Railway dashboard)
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 OTCHARTS_API_KEY = os.getenv("OTCHARTS_API_KEY")
@@ -27,21 +27,26 @@ def calculate_rsi(series, period=14):
     return 100 - (100 / (1 + rs))
 
 def check_market():
+    # Initialize OTCharts client
     client = otcharts.Client(api_key=OTCHARTS_API_KEY)
     
-    # Fetch last 100 candles of M15 EURUSD from the real market book
-    # Note: If 'realmarket' gives an error, try 'real_market' or 'forex'
-    bars = client.candles("realmarket", "EURUSD", tf=15, limit=100)
+    # Fetch last 100 candles of M5 EURUSD from the real market book
+    # NOTE: If 'realmarket' gives an error, try 'real_market' or 'forex'
+    bars = client.candles("realmarket", "EURUSD", tf=5, limit=100)
     
+    if not bars:
+        print("No data received from OTCharts.")
+        return
+
     # Convert to DataFrame
     df = pd.DataFrame(bars)
     df['close'] = df['close'].astype(float)
     
-    # Calculate EMAs
+    # Calculate EMAs (9 and 21)
     df['ema9'] = df['close'].ewm(span=9, adjust=False).mean()
     df['ema21'] = df['close'].ewm(span=21, adjust=False).mean()
     
-    # Calculate RSI
+    # Calculate RSI (14 period)
     df['rsi'] = calculate_rsi(df['close'])
     
     # Get the last closed candle and the one before it
@@ -50,24 +55,26 @@ def check_market():
     
     current_price = last_row['close']
     
-    # Crossover logic (checking the closed candle vs the one before)
+    # Crossover logic
     ema_cross_up = prev_row['ema9'] <= prev_row['ema21'] and last_row['ema9'] > last_row['ema21']
     ema_cross_down = prev_row['ema9'] >= prev_row['ema21'] and last_row['ema9'] < last_row['ema21']
     
     signal = None
     
+    # BUY CONDITION: EMA 9 crosses ABOVE EMA 21 AND RSI > 50
     if ema_cross_up and last_row['rsi'] > 50:
         signal = (
-            f"🟢 *BUY SIGNAL: EURUSD M15*\n\n"
+            f"🟢 *BUY SIGNAL: EURUSD M5*\n\n"
             f"📈 EMA 9 crossed above EMA 21\n"
             f"📊 RSI: {last_row['rsi']:.2f}\n"
             f"💰 Price: {current_price:.5f}\n\n"
             f"🎯 Take Profit: 15 pips\n"
             f"🛑 Stop Loss: 10 pips"
         )
+    # SELL CONDITION: EMA 9 crosses BELOW EMA 21 AND RSI < 50
     elif ema_cross_down and last_row['rsi'] < 50:
         signal = (
-            f"🔴 *SELL SIGNAL: EURUSD M15*\n\n"
+            f"🔴 *SELL SIGNAL: EURUSD M5*\n\n"
             f"📉 EMA 9 crossed below EMA 21\n"
             f"📊 RSI: {last_row['rsi']:.2f}\n"
             f"💰 Price: {current_price:.5f}\n\n"
@@ -75,6 +82,7 @@ def check_market():
             f"🛑 Stop Loss: 10 pips"
         )
     
+    # Send the signal if we have one
     if signal:
         print(f"Sending signal:\n{signal}")
         send_telegram(signal)
@@ -83,10 +91,10 @@ def check_market():
 
 if __name__ == "__main__":
     print("Starting Forex Signal Bot...")
-    send_telegram("🤖 Bot is online. Monitoring EURUSD M15...")
+    send_telegram("🤖 Bot is online. Monitoring EURUSD M5 for scalping signals...")
     while True:
         try:
             check_market()
         except Exception as e:
             print(f"Error: {e}")
-        time.sleep(900) # Wait 15 minutes
+        time.sleep(300) # Wait 5 minutes (300 seconds) for M5
