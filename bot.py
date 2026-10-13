@@ -33,8 +33,8 @@ def check_market():
     
     for pair in PAIRS:
         try:
-            # Fetch M1 data
-            bars = client.candles("quotex", pair, tf=1, limit=100)
+            # Fetch M5 data (Quotex does not support M1)
+            bars = client.candles("quotex", pair, tf=5, limit=100)
             
             if not bars:
                 print(f"No data received for {pair}.")
@@ -59,27 +59,27 @@ def check_market():
             # OPEN BUY SIGNAL
             if ema_cross_up and last_row['rsi'] > 50:
                 signal = (
-                    f"🟢 *OPEN BUY: {pair} M1*\n\n"
+                    f"🟢 *OPEN BUY: {pair} M5*\n\n"
                     f"📈 EMA 9 crossed above EMA 21\n"
                     f"📊 RSI: {last_row['rsi']:.2f}\n"
                     f"💰 Price: {current_price:.5f}\n\n"
-                    f"🎯 Take Profit: 5 pips\n"
+                    f"🎯 Take Profit: 10 pips\n"
                     f"🛑 Stop Loss: 5 pips"
                 )
             # OPEN SELL SIGNAL
             elif ema_cross_down and last_row['rsi'] < 50:
                 signal = (
-                    f"🔴 *OPEN SELL: {pair} M1*\n\n"
+                    f"🔴 *OPEN SELL: {pair} M5*\n\n"
                     f"📉 EMA 9 crossed below EMA 21\n"
                     f"📊 RSI: {last_row['rsi']:.2f}\n"
                     f"💰 Price: {current_price:.5f}\n\n"
-                    f"🎯 Take Profit: 5 pips\n"
+                    f"🎯 Take Profit: 10 pips\n"
                     f"🛑 Stop Loss: 5 pips"
                 )
             # CLOSE SIGNAL (Opposite Cross)
             elif ema_cross_up and last_row['rsi'] < 50:
                 signal = (
-                    f"⚠️ *CLOSE SELL TRADE: {pair} M1*\n\n"
+                    f"⚠️ *CLOSE SELL TRADE: {pair} M5*\n\n"
                     f"🔄 EMA 9 crossed above EMA 21\n"
                     f"📊 RSI: {last_row['rsi']:.2f}\n"
                     f"💰 Price: {current_price:.5f}\n\n"
@@ -87,7 +87,7 @@ def check_market():
                 )
             elif ema_cross_down and last_row['rsi'] > 50:
                 signal = (
-                    f"⚠️ *CLOSE BUY TRADE: {pair} M1*\n\n"
+                    f"⚠️ *CLOSE BUY TRADE: {pair} M5*\n\n"
                     f"🔄 EMA 9 crossed below EMA 21\n"
                     f"📊 RSI: {last_row['rsi']:.2f}\n"
                     f"💰 Price: {current_price:.5f}\n\n"
@@ -106,11 +106,11 @@ def check_market():
             print(f"Error checking {pair}: {e}")
 
 if __name__ == "__main__":
-    print("Starting M1 Scalping Bot...")
-    send_telegram("🤖 *M1 Scalping Bot* is online. Monitoring EURUSD, GBPUSD, USDJPY on M1...")
+    print("Starting M5 Scalping Bot...")
+    send_telegram("🤖 *M5 Scalping Bot* is online. Monitoring EURUSD, GBPUSD, USDJPY on M5...")
     while True:
         try:
             check_market()
         except Exception as e:
             print(f"Main Loop Error: {e}")
-        time.sleep(60) # Wait 1 minute for M1
+        time.sleep(300) # Wait 5 minutes for M5
