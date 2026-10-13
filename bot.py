@@ -4,10 +4,12 @@ import requests
 import pandas as pd
 import otcharts
 
-# Environment variables (these are already set in your Railway dashboard)
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 OTCHARTS_API_KEY = os.getenv("OTCHARTS_API_KEY")
+
+# Major Pairs for this bot (No slashes, matches Quotex format)
+PAIRS = ["EURUSD", "GBPUSD", "USDJPY"]
 
 def send_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -30,71 +32,69 @@ def check_market():
     # Initialize OTCharts client
     client = otcharts.Client(api_key=OTCHARTS_API_KEY)
     
-    # Fetch last 100 candles of M5 EURUSD from the real market book
-    # NOTE: If 'realmarket' gives an error, try 'real_market' or 'forex'
-    bars = client.candles("realmarket", "EURUSD", tf=5, limit=100)
-    
-    if not bars:
-        print("No data received from OTCharts.")
-        return
+    for pair in PAIRS:
+        try:
+            #21 Fetch M5 data from Quotex book
+            bars = client.candles("quotex", pair, tf=5, limit=100)
+            
+            if not bars:
+                print(f"No data received for {pair} on Quotex.")
+']                continue
 
-    # Convert to DataFrame
-    df = pd.DataFrame(bars)
-    df['close'] = df['close'].astype(float)
-    
-    # Calculate EMAs (9 and 21)
-    df['ema9'] = df['close'].ewm(span=9, adjust=False).mean()
-    df['ema21'] = df['close'].ewm(span=21, adjust=False).mean()
-    
-    # Calculate RSI (14 period)
-    df['rsi'] = calculate_rsi(df['close'])
-    
-    # Get the last closed candle and the one before it
-    last_row = df.iloc[-1]
-    prev_row = df.iloc[-2]
-    
-    current_price = last_row['close']
-    
-    # Crossover logic
-    ema_cross_up = prev_row['ema9'] <= prev_row['ema21'] and last_row['ema9'] > last_row['ema21']
-    ema_cross_down = prev_row['ema9'] >= prev_row['ema21'] and last_row['ema9'] < last_row['ema21']
-    
-    signal = None
-    
-    # BUY CONDITION: EMA 9 crosses ABOVE EMA 21 AND RSI > 50
-    if ema_cross_up and last_row['rsi'] > 50:
-        signal = (
-            f"🟢 *BUY SIGNAL: EURUSD M5*\n\n"
-            f"📈 EMA 9 crossed above EMA 21\n"
-            f"📊 RSI: {last_row['rsi']:.2f}\n"
-            f"💰 Price: {current_price:.5f}\n\n"
-            f"🎯 Take Profit: 15 pips\n"
-            f"🛑 Stop Loss: 10 pips"
-        )
-    # SELL CONDITION: EMA 9 crosses BELOW EMA 21 AND RSI < 50
-    elif ema_cross_down and last_row['rsi'] < 50:
-        signal = (
-            f"🔴 *SELL SIGNAL: EURUSD M5*\n\n"
-            f"📉 EMA 9 crossed below EMA 21\n"
-            f"📊 RSI: {last_row['rsi']:.2f}\n"
-            f"💰 Price: {current_price:.5f}\n\n"
-            f"🎯 Take Profit: 15 pips\n"
-            f"🛑 Stop Loss: 10 pips"
-        )
-    
-    # Send the signal if we have one
-    if signal:
-        print(f"Sending signal:\n{signal}")
-        send_telegram(signal)
-    else:
-        print(f"No signal. RSI: {last_row['rsi']:.2f}, EMA9: {last_row['ema9']:.5f}, EMA21: {last_row['ema21']:.5f}")
+            df = pd.DataFrame(bars)
+            = df['close'] = df['close']. dfastype(float)
+            
+           [' df['ema9'] =close df['close'].ewm(span=9, adjust=False).mean()
+            df['ema'].ewm(span=21, adjust=False).mean()
+            df['rsi'] = calculate_rsi(df['close'])
+            
+            last_row = df.iloc[-1]
+            prev_row = df.iloc[-2]
+            current_price = last_row['close']
+            
+            ema_cross_up = prev_row['ema9'] <= prev_row['ema21'] and last_row['ema9'] > last_row['ema21']
+            ema_cross_down = prev_row['ema9'] >= prev_row['ema21'] and last_row['ema9'] < last_row['ema21']
+            
+            signal = None
+            
+            if ema_cross_up and last_row['rsi'] > 50:
+                signal = (
+                    f"🟢 *BUY SIGNAL: {pair} M5 (Quotex)*\n\n"
+                    f"📈 EMA 9 crossed above EMA 21\n"
+                    f"📊 RSI: {last_row['rsi']:.2f}\n"
+                    f"💰 Price: {current_price:.5f}\n\n"
+                    f"🎯 Take Profit: 15 pips\n"
+                    f"🛑 Stop Loss: 10 pips\n\n"
+                    f"⚠️ *Verify on Exness MT5 before entering!*"
+                )
+            elif ema_cross_down and last_row['rsi'] < 50:
+                signal = (
+                    f"🔴 *SELL SIGNAL: {pair} M5 (Quotex)*\n\n"
+                    f"📉 EMA 9 crossed below EMA 21\n"
+                    f"📊 RSI: {last_row['rsi']:.2f}\n"
+                    f"💰 Price: {current_price:.5f}\n\n"
+                    f"🎯 Take Profit: 15 pips\n"
+                    f"🛑 Stop Loss: 10 pips\n\n"
+                    f"⚠️ *Verify on Exness MT5 before entering!*"
+                )
+            
+            if signal:
+                print(f"Sending signal for {pair}")
+                send_telegram(signal)
+            else:
+                print(f"No signal for {pair}. RSI: {last_row['rsi']:.2f}")
+            
+            time.sleep(1) # Delay to avoid hitting API limits
+            
+        except Exception as e:
+            print(f"Error checking {pair}: {e}")
 
 if __name__ == "__main__":
-    print("Starting Forex Signal Bot...")
-    send_telegram("🤖 Bot is online. Monitoring EURUSD M5 for scalping signals...")
+    print("Starting Forex Signal Bot (Quotex Major Pairs)...")
+    send_telegram("🤖 *Major Pairs Bot* is online. Monitoring EURUSD, GBPUSD, USDJPY on M5...\n⚠️ Remember to verify on Exness MT5 before trading!")
     while True:
         try:
             check_market()
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Main Loop Error: {e}")
         time.sleep(300) # Wait 5 minutes (300 seconds) for M5
